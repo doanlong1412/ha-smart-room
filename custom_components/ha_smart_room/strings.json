@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HA Smart Room",
+        "description": "Click Submit to activate. Rooms are registered automatically by the HA Smart Room Card — no manual configuration needed."
+      }
+    },
+    "abort": {
+      "already_configured": "HA Smart Room is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HA Smart Room Options",
+        "description": "Rooms and settings are managed directly from the card's visual editor."
+      }
+    }
+  }
+}

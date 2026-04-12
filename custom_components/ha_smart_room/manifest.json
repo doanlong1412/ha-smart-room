@@ -1,0 +1,13 @@
+{
+  "domain": "ha_smart_room",
+  "name": "HA Smart Room",
+  "version": "1.0.0",
+  "documentation": "https://github.com/doanlong1412/ha-smart-room-card",
+  "issue_tracker": "https://github.com/doanlong1412/ha-smart-room-card/issues",
+  "codeowners": ["@doanlong1412"],
+  "requirements": [],
+  "dependencies": [],
+  "after_dependencies": [],
+  "iot_class": "local_push",
+  "config_flow": true
+}

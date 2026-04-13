@@ -47,7 +47,7 @@ _LOGGER = logging.getLogger(__name__)
 REGISTER_ROOM_SCHEMA = vol.Schema({
     vol.Required("room_id"):          cv.string,
     vol.Required("room_title"):       cv.string,
-    vol.Optional("delay_min", default=DEFAULT_DELAY_MIN): vol.All(int, vol.Range(min=1, max=120)),
+    vol.Optional("delay_min", default=DEFAULT_DELAY_MIN): vol.All(vol.Coerce(int), vol.Range(min=1, max=120)),
     vol.Optional("motion_entity", default=""): cv.string,
     vol.Optional("device_entities", default=[]): vol.All(cv.ensure_list, [cv.string]),
 })
@@ -124,7 +124,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 # ── Services ──────────────────────────────────────────────────────────────────
 
 def _register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Register all services exposed to the card and automations."""
+    """Register all services exposed to the card and automations (only once)."""
+    # Services chỉ cần đăng ký 1 lần — nếu đã có thì bỏ qua
+    if hass.services.has_service(DOMAIN, SERVICE_REGISTER_ROOM):
+        return
 
     def _get_data():
         return hass.data[DOMAIN][entry.entry_id]
@@ -134,6 +137,8 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
         Called by the card on load / config change.
         Creates or updates a room coordinator + entities.
         """
+        from homeassistant.helpers.entity_platform import async_get_platforms
+
         data        = _get_data()
         registry    = data["registry"]
         coordinators = data["coordinators"]
@@ -144,24 +149,41 @@ def _register_services(hass: HomeAssistant, entry: ConfigEntry) -> None:
         motion_entity   = call.data["motion_entity"]
         device_entities = call.data["device_entities"]
 
-        changed = await registry.async_register(
+        await registry.async_register(
             room_id, room_title, delay_min, motion_entity, device_entities
         )
 
         if room_id in coordinators:
-            # Update existing coordinator hot — no entity re-creation needed
+            # Cập nhật coordinator đang chạy — không cần tạo lại entities
             coord = coordinators[room_id]
             coord.update_config(room_title, delay_min, motion_entity, device_entities)
             _LOGGER.debug("Updated coordinator for room '%s'", room_title)
         else:
-            # New room — create coordinator and reload platforms to add entities
+            # Phòng mới — tạo coordinator rồi thêm entities vào từng platform đang chạy
             room_data = registry.get(room_id)
             coord = _make_coordinator(hass, room_data)
             coordinators[room_id] = coord
             await coord.async_setup()
-            # Reload platforms so new entities are created
-            await hass.config_entries.async_reload(entry.entry_id)
-            _LOGGER.info("Created new room '%s'", room_title)
+
+            # Thêm entities vào các platform đang chạy (không reload toàn bộ integration)
+            platforms = async_get_platforms(hass, DOMAIN)
+            for platform in platforms:
+                if platform.config_entry.entry_id != entry.entry_id:
+                    continue
+                if platform.domain == "switch":
+                    from .switch import AutoModeSwitch
+                    await platform.async_add_entities([AutoModeSwitch(coord, entry.entry_id)])
+                elif platform.domain == "number":
+                    from .number import AutoDelayNumber
+                    await platform.async_add_entities([AutoDelayNumber(coord, entry.entry_id)])
+                elif platform.domain == "sensor":
+                    from .sensor import RoomStatusSensor, RoomLastMotionSensor, RoomCountdownSensor
+                    await platform.async_add_entities([
+                        RoomStatusSensor(coord, entry.entry_id),
+                        RoomLastMotionSensor(coord, entry.entry_id),
+                        RoomCountdownSensor(coord, entry.entry_id),
+                    ])
+            _LOGGER.info("Created new room '%s' with entities", room_title)
 
     async def handle_unregister_room(call: ServiceCall) -> None:
         """Remove a room, its entities and device from Integration entries."""

@@ -1,4 +1,4 @@
-"""Switch platform — one auto-off toggle per room."""
+"""Switch platform — one auto-off switch per room."""
 from __future__ import annotations
 
 import logging
@@ -8,7 +8,6 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity import DeviceInfo
 
 from . import get_coordinators
 from .const import DOMAIN
@@ -23,10 +22,6 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinators = get_coordinators(hass, entry.entry_id)
-
-    hass.data[DOMAIN].setdefault(f"{entry.entry_id}_add_entities", {})
-    hass.data[DOMAIN][f"{entry.entry_id}_add_entities"]["switch"] = async_add_entities
-
     async_add_entities(
         AutoModeSwitch(coord, entry.entry_id)
         for coord in coordinators.values()
@@ -34,23 +29,17 @@ async def async_setup_entry(
 
 
 class AutoModeSwitch(SwitchEntity):
-    """Switch to enable / disable auto-off mode for one room."""
+    """Switch to enable/disable auto-off mode for one room."""
 
-    _attr_has_entity_name = False   # dùng tên đầy đủ để entity_id đoán được
-    _attr_icon            = "mdi:robot"
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:robot"
 
     def __init__(self, coord: RoomCoordinator, entry_id: str) -> None:
         self._coord    = coord
         self._entry_id = entry_id
-        # unique_id và name đều dùng room_id để entity_id = switch.{room_id}_auto_off
         self._attr_unique_id = f"{coord.room_id}_{DOMAIN}_auto"
-        self._attr_name      = f"{coord.room_id}_auto_off"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coord.room_id)},
-            name=coord.room_title,
-            manufacturer="HA Smart Room",
-        )
-        self._unsub: callable | None = None
+        self._attr_name      = f"{coord.room_id} Auto Off"
+        self._unsub = None
 
     @property
     def is_on(self) -> bool:

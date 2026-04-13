@@ -8,6 +8,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity import DeviceInfo
 
 from . import get_coordinators
 from .const import (
@@ -36,7 +37,6 @@ async def async_setup_entry(
 ) -> None:
     coordinators = get_coordinators(hass, entry.entry_id)
 
-    # Store callback for dynamic entity creation on new rooms
     hass.data[DOMAIN].setdefault(f"{entry.entry_id}_add_entities", {})
     hass.data[DOMAIN][f"{entry.entry_id}_add_entities"]["sensor"] = async_add_entities
 
@@ -48,17 +48,20 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-# ── Base mixin ─────────────────────────────────────────────────────────────────
-
 class _RoomSensorBase(SensorEntity):
     """Shared lifecycle for all room sensors."""
 
-    _attr_has_entity_name = True
+    _attr_has_entity_name = False   # tên đầy đủ để entity_id đoán được
 
     def __init__(self, coord: RoomCoordinator, entry_id: str) -> None:
         self._coord    = coord
         self._entry_id = entry_id
         self._unsub: callable | None = None
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, coord.room_id)},
+            name=coord.room_title,
+            manufacturer="HA Smart Room",
+        )
 
     async def async_added_to_hass(self) -> None:
         self._unsub = self._coord.async_add_listener(self._on_update)
@@ -72,15 +75,11 @@ class _RoomSensorBase(SensorEntity):
         self.async_write_ha_state()
 
 
-# ── Status sensor ──────────────────────────────────────────────────────────────
-
 class RoomStatusSensor(_RoomSensorBase):
-    """Sensor: idle / occupied / countdown / triggered."""
-
     def __init__(self, coord: RoomCoordinator, entry_id: str) -> None:
         super().__init__(coord, entry_id)
         self._attr_unique_id = f"{coord.room_id}_{DOMAIN}_status"
-        self._attr_name      = f"{coord.room_title} Status"
+        self._attr_name      = f"{coord.room_id}_status"
 
     @property
     def native_value(self) -> str:
@@ -100,18 +99,14 @@ class RoomStatusSensor(_RoomSensorBase):
         }
 
 
-# ── Last-motion sensor ─────────────────────────────────────────────────────────
-
 class RoomLastMotionSensor(_RoomSensorBase):
-    """Sensor: timestamp of last detected motion."""
-
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_icon         = "mdi:motion-sensor"
 
     def __init__(self, coord: RoomCoordinator, entry_id: str) -> None:
         super().__init__(coord, entry_id)
         self._attr_unique_id = f"{coord.room_id}_{DOMAIN}_last_motion"
-        self._attr_name      = f"{coord.room_title} Last Motion"
+        self._attr_name      = f"{coord.room_id}_last_motion"
 
     @property
     def native_value(self):
@@ -125,18 +120,14 @@ class RoomLastMotionSensor(_RoomSensorBase):
         }
 
 
-# ── Countdown sensor ───────────────────────────────────────────────────────────
-
 class RoomCountdownSensor(_RoomSensorBase):
-    """Sensor: seconds remaining until auto-off fires."""
-
     _attr_icon                       = "mdi:timer-outline"
     _attr_native_unit_of_measurement = "s"
 
     def __init__(self, coord: RoomCoordinator, entry_id: str) -> None:
         super().__init__(coord, entry_id)
         self._attr_unique_id = f"{coord.room_id}_{DOMAIN}_countdown"
-        self._attr_name      = f"{coord.room_title} Countdown"
+        self._attr_name      = f"{coord.room_id}_countdown"
 
     @property
     def native_value(self) -> int | None:

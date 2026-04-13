@@ -207,14 +207,14 @@ class RoomCoordinator:
         )
 
     async def _countdown_worker(self, delay_secs: float) -> None:
-        """Sleep in 30-second ticks, notifying listeners for UI updates."""
+        """Sleep in 1-second ticks for smooth UI countdown updates."""
         elapsed = 0.0
-        tick    = 30.0
+        tick    = 1.0
         while elapsed < delay_secs:
             sleep_for = min(tick, delay_secs - elapsed)
             await asyncio.sleep(sleep_for)
-            elapsed += sleep_for          # ← use actual sleep duration, not tick
-            self._notify_listeners()      # update remaining-seconds sensor
+            elapsed += sleep_for
+            self._notify_listeners()      # update remaining-seconds sensor every second
         await self._execute_autooff()
 
     def _cancel_countdown(self) -> None:

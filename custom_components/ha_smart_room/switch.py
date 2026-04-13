@@ -8,6 +8,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity import DeviceInfo
 
 from . import get_coordinators
 from .const import DOMAIN
@@ -23,7 +24,6 @@ async def async_setup_entry(
 ) -> None:
     coordinators = get_coordinators(hass, entry.entry_id)
 
-    # Store the callback so __init__ can add entities dynamically for new rooms
     hass.data[DOMAIN].setdefault(f"{entry.entry_id}_add_entities", {})
     hass.data[DOMAIN][f"{entry.entry_id}_add_entities"]["switch"] = async_add_entities
 
@@ -36,17 +36,21 @@ async def async_setup_entry(
 class AutoModeSwitch(SwitchEntity):
     """Switch to enable / disable auto-off mode for one room."""
 
-    _attr_has_entity_name = True
+    _attr_has_entity_name = False   # dùng tên đầy đủ để entity_id đoán được
     _attr_icon            = "mdi:robot"
 
     def __init__(self, coord: RoomCoordinator, entry_id: str) -> None:
         self._coord    = coord
         self._entry_id = entry_id
+        # unique_id và name đều dùng room_id để entity_id = switch.{room_id}_auto_off
         self._attr_unique_id = f"{coord.room_id}_{DOMAIN}_auto"
-        self._attr_name      = f"{coord.room_title} Auto Off"
+        self._attr_name      = f"{coord.room_id}_auto_off"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, coord.room_id)},
+            name=coord.room_title,
+            manufacturer="HA Smart Room",
+        )
         self._unsub: callable | None = None
-
-    # ── State ──────────────────────────────────────────────────────────────────
 
     @property
     def is_on(self) -> bool:
@@ -60,15 +64,11 @@ class AutoModeSwitch(SwitchEntity):
             "delay_min":  self._coord.delay_min,
         }
 
-    # ── Commands ───────────────────────────────────────────────────────────────
-
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._coord.async_set_auto(True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._coord.async_set_auto(False)
-
-    # ── Lifecycle ──────────────────────────────────────────────────────────────
 
     async def async_added_to_hass(self) -> None:
         self._unsub = self._coord.async_add_listener(self._on_coordinator_update)

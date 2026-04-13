@@ -22,6 +22,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinators = get_coordinators(hass, entry.entry_id)
+
+    # Store callback for dynamic entity creation on new rooms
+    hass.data[DOMAIN].setdefault(f"{entry.entry_id}_add_entities", {})
+    hass.data[DOMAIN][f"{entry.entry_id}_add_entities"]["number"] = async_add_entities
+
     async_add_entities(
         AutoDelayNumber(coord, entry.entry_id)
         for coord in coordinators.values()
@@ -31,20 +36,22 @@ async def async_setup_entry(
 class AutoDelayNumber(NumberEntity):
     """Number entity to set auto-off delay in minutes for one room."""
 
-    _attr_has_entity_name = True
-    _attr_icon            = "mdi:timer-outline"
-    _attr_native_min_value = 1
-    _attr_native_max_value = 120
-    _attr_native_step      = 1
-    _attr_mode             = NumberMode.BOX
-    _attr_native_unit_of_measurement = "min"
+    _attr_has_entity_name             = True
+    _attr_icon                        = "mdi:timer-outline"
+    _attr_native_min_value            = 1
+    _attr_native_max_value            = 120
+    _attr_native_step                 = 1
+    _attr_mode                        = NumberMode.BOX
+    _attr_native_unit_of_measurement  = "min"
 
     def __init__(self, coord: RoomCoordinator, entry_id: str) -> None:
         self._coord    = coord
         self._entry_id = entry_id
         self._attr_unique_id = f"{coord.room_id}_{DOMAIN}_delay"
         self._attr_name      = f"{coord.room_title} Auto Off Delay"
-        self._unsub = None
+        self._unsub: callable | None = None
+
+    # ── State ──────────────────────────────────────────────────────────────────
 
     @property
     def native_value(self) -> float:
@@ -57,8 +64,12 @@ class AutoDelayNumber(NumberEntity):
             "room_title": self._coord.room_title,
         }
 
+    # ── Command ────────────────────────────────────────────────────────────────
+
     async def async_set_native_value(self, value: float) -> None:
         await self._coord.async_set_delay(int(value))
+
+    # ── Lifecycle ──────────────────────────────────────────────────────────────
 
     async def async_added_to_hass(self) -> None:
         self._unsub = self._coord.async_add_listener(self._on_coordinator_update)

@@ -1,7 +1,7 @@
 """Constants for HA Smart Room integration."""
 
-DOMAIN = "ha_smart_room"
-VERSION = "1.0.0"
+DOMAIN   = "ha_smart_room"
+VERSION  = "1.0.0"
 
 # Config entry keys
 CONF_ROOM_ID    = "room_id"
@@ -11,7 +11,7 @@ CONF_DELAY_MIN  = "delay_min"
 # Default values
 DEFAULT_DELAY_MIN = 5
 
-# Entity unique id prefixes
+# Entity unique-id prefixes  (used by coordinator + platforms)
 PREFIX_AUTO   = "auto"
 PREFIX_DELAY  = "delay"
 PREFIX_STATUS = "status"
@@ -27,8 +27,8 @@ STATUS_TRIGGERED = "triggered"
 STORAGE_KEY     = "ha_smart_room_rooms"
 STORAGE_VERSION = 1
 
-# Service called by the card via websocket / REST to register a room
-SERVICE_REGISTER_ROOM = "register_room"
+# Services exposed to the card / automations
+SERVICE_REGISTER_ROOM   = "register_room"
 SERVICE_UNREGISTER_ROOM = "unregister_room"
 SERVICE_UPDATE_MOTION   = "update_motion"
 SERVICE_TRIGGER_AUTOOFF = "trigger_autooff"

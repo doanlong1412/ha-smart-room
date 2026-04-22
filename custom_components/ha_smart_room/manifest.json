@@ -1,16 +1,13 @@
 {
-  "domain": "ha_optimizer",
-  "name": "HA Optimizer",
-  "version": "1.2.1",
-  "description": "Smart cleanup tool for Home Assistant - scan, analyze and purge unused entities, automations, scripts and helpers.",
-  "documentation": "https://github.com/doanlong1412/ha-optimizer",
-  "issue_tracker": "https://github.com/doanlong1412/ha-optimizer/issues",
+  "domain": "ha_smart_room",
+  "name": "HA Smart Room",
+  "version": "1.0.0",
+  "documentation": "https://github.com/doanlong1412/ha-smart-room-card",
+  "issue_tracker": "https://github.com/doanlong1412/ha-smart-room-card/issues",
   "codeowners": ["@doanlong1412"],
   "requirements": [],
   "dependencies": [],
-  "after_dependencies": ["recorder"],
-  "config_flow": true,
-  "integration_type": "service",
-  "iot_class": "local_polling",
-  "single_config_entry": true
+  "after_dependencies": [],
+  "iot_class": "local_push",
+  "config_flow": true
 }
